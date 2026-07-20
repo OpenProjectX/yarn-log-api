@@ -10,6 +10,45 @@ the auto-configuration creates `YarnClient`. In a Kerberos cluster the library
 uses that same login UGI to establish SPNEGO and caches the resulting
 `hadoop.auth` cookie per NodeManager origin.
 
+### Embedding the starter in your own image
+
+Hadoop must be able to resolve the container process UID to an operating-system
+username. If your image uses a numeric non-root UID, add a matching entry to
+both `/etc/passwd` and `/etc/group`. Otherwise UGI initialization can fail with
+`YarnRuntimeException: Unable to determine user`, even on a non-Kerberos
+cluster. For example:
+
+```text
+# /etc/passwd
+yarn-log-api:x:10001:10001:YARN Log API:/app:/usr/sbin/nologin
+
+# /etc/group
+yarn-log-api:x:10001:
+```
+
+Make `core-site.xml`, `yarn-site.xml`, and any storage-specific configuration
+available on the application classpath. Setting `HADOOP_CONF_DIR` alone does not
+alter the classpath of a directly launched JVM; the Hadoop shell scripts usually
+perform that step. Add the mounted directory to the JVM classpath or load its XML
+files into your `Configuration` bean explicitly.
+
+In a secured cluster, call `UserGroupInformation.setConfiguration` and complete
+the keytab or ticket-cache login while creating that bean—not from an
+`ApplicationRunner`, which executes after the auto-configured `YarnClient` has
+already been created:
+
+```kotlin
+@Bean
+fun yarnConfiguration(): Configuration = YarnConfiguration().also { configuration ->
+    UserGroupInformation.setConfiguration(configuration)
+    UserGroupInformation.loginUserFromKeytab(principal, keytab)
+}
+```
+
+The starter then uses the same login UGI for YARN client calls, aggregated-log
+filesystem access, and NodeManager SPNEGO. Do not configure a second independent
+Kerberos identity on `WebClient`.
+
 ## SSE
 
 ```http
