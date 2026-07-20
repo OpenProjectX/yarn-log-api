@@ -56,7 +56,25 @@ GET /api/v1/yarn/applications/application_123_0001/logs?follow=true&logFiles=std
 Accept: text/event-stream
 ```
 
-Log event payloads use Base64 so offsets remain byte-accurate.
+Log events include both representations:
+
+- `data`: Base64 containing the exact bytes used by `offset`.
+- `text`: a convenient UTF-8 view with newlines, tabs, backslashes, and control
+  characters escaped so the value is printable on one line.
+
+For example, a log chunk containing two lines has a payload like:
+
+```json
+{
+  "type": "LOG",
+  "encoding": "BASE64",
+  "data": "Zmlyc3QKc2Vjb25kCg==",
+  "text": "first\\nsecond\\n"
+}
+```
+
+Use `data` for exact reconstruction because a byte chunk can split a multi-byte
+UTF-8 character; use `text` for terminals, dashboards, and diagnostics.
 
 ## WebSocket
 

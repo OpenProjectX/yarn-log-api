@@ -198,6 +198,7 @@ class DefaultYarnLogStreamService(
                 generation = cursor.generation,
                 encoding = "BASE64",
                 data = Base64.getEncoder().encodeToString(bytes),
+                text = bytes.toSingleLineLogText(),
             ),
         )
     }
@@ -247,6 +248,7 @@ class DefaultYarnLogStreamService(
             source = YarnLogSource.AGGREGATED,
             encoding = "BASE64",
             data = Base64.getEncoder().encodeToString(bytes),
+            text = bytes.toSingleLineLogText(),
         )
     }
 
@@ -287,6 +289,7 @@ class DefaultYarnLogStreamService(
             generation: Long? = null,
             encoding: String? = null,
             data: String? = null,
+            text: String? = null,
             state: String? = null,
             message: String? = null,
         ) = YarnLogEvent(
@@ -301,6 +304,7 @@ class DefaultYarnLogStreamService(
             generation = generation,
             encoding = encoding,
             data = data,
+            text = text,
             state = state,
             message = message,
         )
