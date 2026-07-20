@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: yarn-log-api
+
+yarn-log-api:
+  poll-interval: 1s
+  initial-tail-bytes: 64KB
+  max-tail-window: 8MB
+  max-concurrent-node-manager-requests: 16
+  heartbeat-interval: 15s
+  aggregation-wait-timeout: 2m
