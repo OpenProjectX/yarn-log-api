@@ -1,6 +1,22 @@
 spring:
   application:
     name: yarn-log-api
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
 
 yarn-log-api:
   poll-interval: 1s
@@ -9,3 +25,7 @@ yarn-log-api:
   max-concurrent-node-manager-requests: 16
   heartbeat-interval: 15s
   aggregation-wait-timeout: 2m
+  app:
+    hadoop-config-directory: ${HADOOP_CONF_DIR:}
+    kerberos-principal: ${YARN_LOG_API_KERBEROS_PRINCIPAL:}
+    kerberos-keytab: ${YARN_LOG_API_KERBEROS_KEYTAB:}
