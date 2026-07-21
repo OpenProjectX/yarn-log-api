@@ -5,9 +5,11 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.yarn.client.api.YarnClient
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.webapp.util.WebAppUtils
+import org.openprojectx.hadoop.yarn.log.api.YarnApplicationQueryService
 import org.openprojectx.hadoop.yarn.log.api.YarnLogAuthorizer
 import org.openprojectx.hadoop.yarn.log.api.YarnLogStreamService
 import org.openprojectx.hadoop.yarn.log.api.engine.AggregatedLogSource
+import org.openprojectx.hadoop.yarn.log.api.engine.DefaultYarnApplicationQueryService
 import org.openprojectx.hadoop.yarn.log.api.engine.DefaultYarnLogStreamService
 import org.openprojectx.hadoop.yarn.log.api.engine.HadoopSpnegoCookieProvider
 import org.openprojectx.hadoop.yarn.log.api.engine.HadoopYarnGateway
@@ -66,9 +68,23 @@ class YarnLogApiAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    fun hadoopYarnGateway(
+        yarnClient: YarnClient,
+        @Qualifier("yarnLogHadoopScheduler") scheduler: Scheduler,
+    ) = HadoopYarnGateway(yarnClient, scheduler)
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun yarnApplicationQueryService(
+        yarnGateway: HadoopYarnGateway,
+        authorizer: YarnLogAuthorizer,
+    ): YarnApplicationQueryService = DefaultYarnApplicationQueryService(yarnGateway, authorizer)
+
+    @Bean
+    @ConditionalOnMissingBean
     fun yarnLogStreamService(
         configuration: Configuration,
-        yarnClient: YarnClient,
+        yarnGateway: HadoopYarnGateway,
         webClientBuilder: WebClient.Builder,
         @Qualifier("yarnLogHadoopScheduler") scheduler: Scheduler,
         authorizer: YarnLogAuthorizer,
@@ -89,7 +105,7 @@ class YarnLogApiAutoConfiguration {
             .build()
         val cookieProvider = HadoopSpnegoCookieProvider(scheduler, properties.spnegoCookieTtl)
         return DefaultYarnLogStreamService(
-            yarnGateway = HadoopYarnGateway(yarnClient, scheduler),
+            yarnGateway = yarnGateway,
             nodeManagerClient = NodeManagerLogClient(
                 webClient,
                 cookieProvider,
@@ -105,6 +121,10 @@ class YarnLogApiAutoConfiguration {
     @ConditionalOnMissingBean
     fun yarnLogSseController(service: YarnLogStreamService, properties: YarnLogApiProperties) =
         YarnLogSseController(service, properties)
+
+    @Bean
+    @ConditionalOnMissingBean
+    fun yarnApplicationController(service: YarnApplicationQueryService) = YarnApplicationController(service)
 
     @Bean
     @ConditionalOnMissingBean(YarnLogWebSocketHandler::class)

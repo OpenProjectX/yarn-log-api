@@ -148,6 +148,18 @@ application/container information before an `ERROR` or `WARNING` event is sent
 to the client. Log contents and SPNEGO cookies are never written by these
 diagnostic messages.
 
+The application image and starter also expose read-only application metadata
+through the same `YarnLogAuthorizer` used by log streams:
+
+```text
+GET /api/v1/yarn/applications/{applicationId}
+GET /api/v1/yarn/applications/{applicationId}/attempts
+GET /api/v1/yarn/applications/{applicationId}/containers
+```
+
+These endpoints return API-owned JSON models rather than Hadoop implementation
+objects. Mutating YARN operations are intentionally not exposed.
+
 The image classpath contains `/etc/hadoop/conf` and `/app/extensions/*`. Mount
 extra JARs into the extension directory when adding a filesystem provider,
 Spring auto-configuration, metrics exporter, or another runtime integration:
