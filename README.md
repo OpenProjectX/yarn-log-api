@@ -131,6 +131,23 @@ You can replace `SPRING_CONFIG_ADDITIONAL_LOCATION` at runtime if a different
 location is required. `JAVA_TOOL_OPTIONS` is also honored by the JVM for options
 such as trust stores, Kerberos diagnostics, or Java agents.
 
+Container logging defaults to `INFO` for this project and `WARN` for Hadoop.
+Both can be changed independently, while standard Spring Boot logging variables
+remain available:
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e YARN_LOG_API_LOG_LEVEL=DEBUG \
+  -e YARN_LOG_API_HADOOP_LOG_LEVEL=INFO \
+  -e LOGGING_LEVEL_REACTOR_NETTY_HTTP_CLIENT=DEBUG \
+  ghcr.io/openprojectx/yarn-log-api:latest
+```
+
+Recovered stream failures are logged with their full stack trace and contextual
+application/container information before an `ERROR` or `WARNING` event is sent
+to the client. Log contents and SPNEGO cookies are never written by these
+diagnostic messages.
+
 The image classpath contains `/etc/hadoop/conf` and `/app/extensions/*`. Mount
 extra JARs into the extension directory when adding a filesystem provider,
 Spring auto-configuration, metrics exporter, or another runtime integration:

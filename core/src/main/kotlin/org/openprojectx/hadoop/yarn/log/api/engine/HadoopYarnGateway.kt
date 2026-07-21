@@ -2,6 +2,7 @@ package org.openprojectx.hadoop.yarn.log.api.engine
 
 import org.apache.hadoop.yarn.api.records.ApplicationId
 import org.apache.hadoop.yarn.client.api.YarnClient
+import org.slf4j.LoggerFactory
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Scheduler
 
@@ -38,7 +39,20 @@ class HadoopYarnGateway(
                 containers = containers,
             )
         }.subscribeOn(hadoopScheduler)
+            .doOnSubscribe { logger.debug("Fetching YARN application snapshot: applicationId={}", applicationId) }
+            .doOnNext { snapshot ->
+                logger.debug(
+                    "Fetched YARN application snapshot: applicationId={}, state={}, containers={}",
+                    snapshot.applicationId,
+                    snapshot.state.name,
+                    snapshot.containers.size,
+                )
+            }
 
     private fun isFinal(state: String): Boolean =
         state == "FINISHED" || state == "FAILED" || state == "KILLED"
+
+    private companion object {
+        val logger = LoggerFactory.getLogger(HadoopYarnGateway::class.java)
+    }
 }

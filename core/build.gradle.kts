@@ -8,6 +8,7 @@ dependencies {
 
     api("io.projectreactor:reactor-core")
     implementation("org.springframework:spring-webflux")
+    implementation("org.slf4j:slf4j-api")
 
     implementation(libs.hadoopYarnClient) {
         exclude(group = "com.sun.jersey")

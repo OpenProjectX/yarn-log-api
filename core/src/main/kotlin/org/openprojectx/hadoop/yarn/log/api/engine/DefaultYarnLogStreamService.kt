@@ -6,6 +6,7 @@ import org.openprojectx.hadoop.yarn.log.api.YarnLogEventType
 import org.openprojectx.hadoop.yarn.log.api.YarnLogSource
 import org.openprojectx.hadoop.yarn.log.api.YarnLogStreamRequest
 import org.openprojectx.hadoop.yarn.log.api.YarnLogStreamService
+import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.util.retry.Retry
@@ -31,6 +32,14 @@ class DefaultYarnLogStreamService(
             Mono.just(session.event(YarnLogEventType.OPEN)),
             firstSnapshot(session),
         ).onErrorResume { error ->
+            logger.error(
+                "YARN log stream failed: applicationId={}, follow={}, logFiles={}, containers={}",
+                request.applicationId,
+                request.follow,
+                request.logFiles,
+                request.containerIds,
+                error,
+            )
             Flux.just(
                 session.event(
                     type = YarnLogEventType.ERROR,
@@ -57,12 +66,24 @@ class DefaultYarnLogStreamService(
     private fun cycle(session: Session, snapshot: YarnApplicationSnapshot): Flux<YarnLogEvent> {
         val events = mutableListOf<YarnLogEvent>()
         if (session.lastApplicationState != snapshot.state.name) {
+            logger.info(
+                "YARN application state changed: applicationId={}, state={}",
+                snapshot.applicationId,
+                snapshot.state.name,
+            )
             session.lastApplicationState = snapshot.state.name
             events += session.event(YarnLogEventType.APPLICATION_STATE, state = snapshot.state.name)
         }
         snapshot.containers.forEach { container ->
             session.containers[container.containerId] = container
             if (session.discoveredContainers.add(container.containerId)) {
+                logger.debug(
+                    "Discovered YARN container: applicationId={}, containerId={}, nodeId={}, state={}",
+                    snapshot.applicationId,
+                    container.containerId,
+                    container.nodeId,
+                    container.state,
+                )
                 events += session.event(
                     type = YarnLogEventType.CONTAINER_DISCOVERED,
                     container = container,
@@ -108,6 +129,17 @@ class DefaultYarnLogStreamService(
         }
         return fetchAtWindow(session, container, logType, cursor)
             .onErrorResume { error ->
+                logger.warn(
+                    "Unable to read NodeManager log; the stream will continue: applicationId={}, " +
+                        "containerId={}, nodeId={}, logType={}, cursorOffset={}, windowBytes={}",
+                    session.request.applicationId,
+                    container.containerId,
+                    container.nodeId,
+                    logType,
+                    cursor.offset,
+                    cursor.windowBytes,
+                    error,
+                )
                 Mono.just(
                     session.event(
                         type = YarnLogEventType.WARNING,
@@ -140,6 +172,15 @@ class DefaultYarnLogStreamService(
             }
             response.fileLength < cursor.offset -> {
                 val oldOffset = cursor.offset
+                logger.warn(
+                    "NodeManager log was truncated: applicationId={}, containerId={}, logType={}, " +
+                        "oldOffset={}, newLength={}",
+                    session.request.applicationId,
+                    container.containerId,
+                    logType,
+                    oldOffset,
+                    response.fileLength,
+                )
                 cursor.generation++
                 cursor.offset = 0
                 cursor.initialized = false
@@ -162,6 +203,15 @@ class DefaultYarnLogStreamService(
                 if (expanded <= cursor.windowBytes) {
                     Mono.error(IllegalStateException("Log growth exceeded the maximum tail window"))
                 } else {
+                    logger.debug(
+                        "Expanding NodeManager tail window: applicationId={}, containerId={}, logType={}, " +
+                            "oldWindowBytes={}, newWindowBytes={}",
+                        session.request.applicationId,
+                        container.containerId,
+                        logType,
+                        cursor.windowBytes,
+                        expanded,
+                    )
                     cursor.windowBytes = expanded
                     fetchAtWindow(session, container, logType, cursor)
                 }
@@ -216,6 +266,15 @@ class DefaultYarnLogStreamService(
         }
         return aggregated
             .onErrorResume { error ->
+                logger.warn(
+                    "Unable to read aggregated logs after application completion: applicationId={}, " +
+                        "owner={}, logFiles={}, containers={}",
+                    snapshot.applicationId,
+                    snapshot.owner,
+                    session.request.logFiles,
+                    session.request.containerIds,
+                    error,
+                )
                 Flux.just(
                     session.event(
                         type = YarnLogEventType.WARNING,
@@ -308,5 +367,9 @@ class DefaultYarnLogStreamService(
             state = state,
             message = message,
         )
+    }
+
+    private companion object {
+        val logger = LoggerFactory.getLogger(DefaultYarnLogStreamService::class.java)
     }
 }

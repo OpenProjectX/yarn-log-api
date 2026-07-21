@@ -18,6 +18,11 @@ management:
         enabled: true
       show-details: never
 
+logging:
+  level:
+    org.openprojectx.hadoop.yarn.log.api: ${YARN_LOG_API_LOG_LEVEL:INFO}
+    org.apache.hadoop: ${YARN_LOG_API_HADOOP_LOG_LEVEL:WARN}
+
 yarn-log-api:
   poll-interval: 1s
   initial-tail-bytes: 64KB

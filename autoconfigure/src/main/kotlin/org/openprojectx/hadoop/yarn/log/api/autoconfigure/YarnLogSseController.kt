@@ -3,6 +3,7 @@ package org.openprojectx.hadoop.yarn.log.api.autoconfigure
 import org.openprojectx.hadoop.yarn.log.api.YarnLogEvent
 import org.openprojectx.hadoop.yarn.log.api.YarnLogStreamRequest
 import org.openprojectx.hadoop.yarn.log.api.YarnLogStreamService
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.http.codec.ServerSentEvent
 import org.springframework.web.bind.annotation.GetMapping
@@ -45,11 +46,30 @@ class YarnLogSseController(
             tailBytes = tailBytes ?: properties.initialTailBytes.toBytes(),
             pollInterval = interval,
         )
-        return service.stream(request).map { event ->
-            ServerSentEvent.builder(event)
-                .id(event.sequence.toString())
-                .event(event.type.name.lowercase())
-                .build()
-        }
+        logger.info(
+            "Opening YARN log SSE stream: applicationId={}, requester={}, follow={}, logFiles={}, " +
+                "containers={}, tailBytes={}, pollInterval={}",
+            request.applicationId,
+            request.requester ?: "anonymous",
+            request.follow,
+            request.logFiles,
+            request.containerIds,
+            request.tailBytes,
+            request.pollInterval,
+        )
+        return service.stream(request)
+            .doOnComplete { logger.info("Completed YARN log SSE stream: applicationId={}", applicationId) }
+            .doOnCancel { logger.info("Client cancelled YARN log SSE stream: applicationId={}", applicationId) }
+            .doOnError { error -> logger.error("YARN log SSE stream terminated unexpectedly: applicationId={}", applicationId, error) }
+            .map { event ->
+                ServerSentEvent.builder(event)
+                    .id(event.sequence.toString())
+                    .event(event.type.name.lowercase())
+                    .build()
+            }
+    }
+
+    private companion object {
+        val logger = LoggerFactory.getLogger(YarnLogSseController::class.java)
     }
 }

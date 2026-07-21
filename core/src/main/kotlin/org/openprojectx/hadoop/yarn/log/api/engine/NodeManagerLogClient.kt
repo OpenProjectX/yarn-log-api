@@ -1,6 +1,7 @@
 package org.openprojectx.hadoop.yarn.log.api.engine
 
 import org.apache.hadoop.security.authentication.client.AuthenticatedURL
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -22,6 +23,13 @@ class NodeManagerLogClient(
         windowBytes: Long,
     ): Mono<NodeManagerLogResponse> {
         val uri = buildUri(nodeHttpAddress, containerId, logType, windowBytes)
+        logger.debug(
+            "Fetching NodeManager log tail: containerId={}, logType={}, windowBytes={}, uri={}",
+            containerId,
+            logType,
+            windowBytes,
+            uri,
+        )
         return exchange(uri, allowAuthenticationRetry = true)
             .map { parser.parse(it, windowBytes) }
     }
@@ -42,6 +50,7 @@ class NodeManagerLogClient(
                         when {
                             response.statusCode().is2xxSuccessful -> response.bodyToMono(ByteArray::class.java)
                             response.statusCode() == HttpStatus.UNAUTHORIZED && allowAuthenticationRetry -> {
+                                logger.warn("NodeManager returned 401; refreshing SPNEGO cookie and retrying: uri={}", uri)
                                 response.releaseBody().then(
                                     Mono.defer {
                                         cookieProvider.invalidate(uri)
@@ -67,5 +76,9 @@ class NodeManagerLogClient(
             .build()
             .encode()
             .toUri()
+    }
+
+    private companion object {
+        val logger = LoggerFactory.getLogger(NodeManagerLogClient::class.java)
     }
 }
