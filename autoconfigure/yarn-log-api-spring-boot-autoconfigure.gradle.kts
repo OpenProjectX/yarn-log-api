@@ -26,6 +26,7 @@ dependencies {
     api("org.springframework.boot:spring-boot-starter")
     kapt("org.springframework.boot:spring-boot-configuration-processor")
 
-
-
+    testImplementation("org.springframework.boot:spring-boot-starter-webflux-test")
+    testImplementation("com.ninja-squad:springmockk:5.0.1")
+    testImplementation(kotlin("test"))
 }

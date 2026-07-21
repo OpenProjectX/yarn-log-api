@@ -23,12 +23,12 @@ class YarnLogSseController(
         produces = [MediaType.TEXT_EVENT_STREAM_VALUE],
     )
     fun stream(
-        @PathVariable applicationId: String,
-        @RequestParam(defaultValue = "true") follow: Boolean,
-        @RequestParam(required = false) logFiles: Set<String>?,
-        @RequestParam(required = false) containers: Set<String>?,
-        @RequestParam(required = false) tailBytes: Long?,
-        @RequestParam(required = false) pollIntervalMs: Long?,
+        @PathVariable("applicationId") applicationId: String,
+        @RequestParam(name = "follow", defaultValue = "true") follow: Boolean,
+        @RequestParam(name = "logFiles", required = false) logFiles: Set<String>?,
+        @RequestParam(name = "containers", required = false) containers: Set<String>?,
+        @RequestParam(name = "tailBytes", required = false) tailBytes: Long?,
+        @RequestParam(name = "pollIntervalMs", required = false) pollIntervalMs: Long?,
         principal: Principal?,
     ): Flux<ServerSentEvent<YarnLogEvent>> {
         val interval = pollIntervalMs?.let(Duration::ofMillis) ?: properties.pollInterval

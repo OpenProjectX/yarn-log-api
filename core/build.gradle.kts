@@ -25,4 +25,5 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("io.projectreactor:reactor-test")
+    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
 }
