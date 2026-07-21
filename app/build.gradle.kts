@@ -49,8 +49,11 @@ jib {
         ports = listOf("8080")
         user = "10001:10001"
         workingDirectory = "/app"
-        extraClasspath = listOf("/etc/hadoop/conf")
-        volumes = listOf("/etc/hadoop/conf", "/etc/security/keytabs")
+        extraClasspath = listOf("/etc/hadoop/conf", "/app/extensions/*")
+        volumes = listOf("/config", "/app/extensions", "/etc/hadoop/conf", "/etc/security/keytabs")
+        environment = mapOf(
+            "SPRING_CONFIG_ADDITIONAL_LOCATION" to "optional:file:/config/",
+        )
         jvmFlags = listOf(
             "-XX:InitialRAMPercentage=25.0",
             "-XX:MaxRAMPercentage=75.0",

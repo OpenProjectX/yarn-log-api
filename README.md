@@ -99,6 +99,53 @@ The `app` module is published as `ghcr.io/openprojectx/yarn-log-api`. It runs as
 UID/GID `10001`, listens on port `8080`, uses container-aware JVM memory limits,
 and exposes Spring Boot liveness and readiness endpoints.
 
+### Runtime configuration
+
+Spring properties can be overridden using normal environment variables or
+command-line arguments:
+
+```bash
+docker run --rm -p 9090:9090 \
+  -e SERVER_PORT=9090 \
+  -e YARN_LOG_API_POLL_INTERVAL=2s \
+  ghcr.io/openprojectx/yarn-log-api:latest
+
+docker run --rm -p 9090:9090 \
+  ghcr.io/openprojectx/yarn-log-api:latest \
+  --server.port=9090 \
+  --yarn-log-api.poll-interval=2s
+```
+
+The image adds `optional:file:/config/` to Spring's configuration search path.
+Mount `application.yaml`, profile-specific files, or an entire configuration
+directory there:
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=production \
+  -v /path/to/config:/config:ro \
+  ghcr.io/openprojectx/yarn-log-api:latest
+```
+
+You can replace `SPRING_CONFIG_ADDITIONAL_LOCATION` at runtime if a different
+location is required. `JAVA_TOOL_OPTIONS` is also honored by the JVM for options
+such as trust stores, Kerberos diagnostics, or Java agents.
+
+The image classpath contains `/etc/hadoop/conf` and `/app/extensions/*`. Mount
+extra JARs into the extension directory when adding a filesystem provider,
+Spring auto-configuration, metrics exporter, or another runtime integration:
+
+```bash
+docker run --rm -p 8080:8080 \
+  -v /path/to/extensions:/app/extensions:ro \
+  -v /path/to/config:/config:ro \
+  ghcr.io/openprojectx/yarn-log-api:latest
+```
+
+Classpath extensions execute with the application and can replace transitive
+classes. Only mount trusted, version-compatible JARs, and ensure all mounted
+files are readable by UID/GID `10001`.
+
 Run against a non-Kerberos cluster by mounting the Hadoop client configuration:
 
 ```bash
